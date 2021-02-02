@@ -102,7 +102,7 @@ async def test_load_balancer_heartbeat():
 
 @pytest.mark.asyncio
 @mock.patch("load_balancer.load_balancer.LoadBalancer.HEARTBEAT_INTERVAL_SECONDS", 0.1)
-async def test_heartbeat_loop():
+async def test_load_balancer_heartbeat_loop():
     provider = Provider()
     provider.check = mock.AsyncMock(return_value=False)
     load_balancer = LoadBalancer([provider], provider_selector=mock.Mock)

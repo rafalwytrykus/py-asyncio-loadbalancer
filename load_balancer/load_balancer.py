@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import Lock
-from collections import defaultdict, Counter
+from collections import Counter
 from typing import List, Sequence, Type, Set, Dict
 
 from load_balancer import exceptions
