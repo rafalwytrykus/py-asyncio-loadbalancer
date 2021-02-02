@@ -12,7 +12,7 @@ from load_balancer.provider import Provider
 
 def test_load_balancer_init():
     providers = [Provider(), Provider()]
-    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
+    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock)
     assert load_balancer.providers == providers
     assert load_balancer.providers is not providers
 
@@ -20,7 +20,7 @@ def test_load_balancer_init():
 def test_load_balancer_init_negative__too_many_providers():
     providers = [Provider() for _ in range(11)]
     with pytest.raises(ValueError):
-        LoadBalancer(providers, provider_selector=mock.Mock())
+        LoadBalancer(providers, provider_selector=mock.Mock)
 
 
 UUIDS = [
@@ -70,7 +70,7 @@ async def test_load_balancer_selectors(_, provider, expected_uids):
 
 def test_load_balancer_include_provider():
     providers = [Provider(), Provider()]
-    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
+    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock)
     new_provider = Provider()
     load_balancer.include_provider(new_provider)
     assert load_balancer.active_providers == providers + [new_provider]
@@ -78,7 +78,7 @@ def test_load_balancer_include_provider():
 
 def test_load_balancer_exclude_provider():
     providers = [Provider(), Provider()]
-    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
+    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock)
     load_balancer.exclude_provider(providers[1])
     assert load_balancer.active_providers == providers[:1]
 
@@ -87,7 +87,7 @@ def test_load_balancer_exclude_provider():
 async def test_load_balancer_heartbeat():
     provider = Provider()
     provider.check = mock.AsyncMock(return_value=False)
-    load_balancer = LoadBalancer([provider], provider_selector=mock.Mock())
+    load_balancer = LoadBalancer([provider], provider_selector=mock.Mock)
     assert load_balancer.active_providers == [provider]
     await load_balancer.check_heartbeats()
     assert load_balancer.active_providers == []
@@ -98,6 +98,22 @@ async def test_load_balancer_heartbeat():
     assert load_balancer.active_providers == []
     await load_balancer.check_heartbeats()
     assert load_balancer.active_providers == [provider]
+
+
+@pytest.mark.asyncio
+@mock.patch("load_balancer.load_balancer.LoadBalancer.HEARTBEAT_INTERVAL_SECONDS", 0.1)
+async def test_heartbeat_loop():
+    provider = Provider()
+    provider.check = mock.AsyncMock(return_value=False)
+    load_balancer = LoadBalancer([provider], provider_selector=mock.Mock)
+    assert load_balancer.active_providers == [provider]
+    heartbeat_loop_task = asyncio.create_task(load_balancer.heartbeat_loop())
+    await asyncio.sleep(0.2)
+    assert load_balancer.active_providers == []
+    provider.check = mock.AsyncMock(return_value=True)
+    await asyncio.sleep(0.2)
+    assert load_balancer.active_providers == [provider]
+    heartbeat_loop_task.cancel()
 
 
 @pytest.mark.asyncio
