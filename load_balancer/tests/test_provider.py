@@ -1,6 +1,8 @@
 import uuid
 from unittest import mock
 
+import pytest
+
 from load_balancer.provider import Provider
 
 UUIDS = [
@@ -9,9 +11,10 @@ UUIDS = [
 ]
 
 
+@pytest.mark.asyncio
 @mock.patch("uuid.uuid4", side_effect=UUIDS)
-def test_provider_get(_):
+async def test_provider_get(_):
     provider_1 = Provider()
     provider_2 = Provider()
-    assert provider_1.get() == str(UUIDS[0])
-    assert provider_2.get() == str(UUIDS[1])
+    assert await provider_1.get() == str(UUIDS[0])
+    assert await provider_2.get() == str(UUIDS[1])
