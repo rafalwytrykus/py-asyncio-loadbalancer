@@ -1,10 +1,11 @@
+import asyncio
 import uuid
 import random
 from unittest import mock
 
 import pytest
 
-from load_balancer import provider_selectors
+from load_balancer import provider_selectors, exceptions
 from load_balancer.load_balancer import LoadBalancer
 from load_balancer.provider import Provider
 
@@ -67,7 +68,7 @@ async def test_load_balancer_selectors(_, provider, expected_uids):
         assert await load_balancer.get() == expected_uid
 
 
-def test_include_provider():
+def test_load_balancer_include_provider():
     providers = [Provider(), Provider()]
     load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
     new_provider = Provider()
@@ -75,7 +76,7 @@ def test_include_provider():
     assert load_balancer.active_providers == providers + [new_provider]
 
 
-def test_exclude_provider():
+def test_load_balancer_exclude_provider():
     providers = [Provider(), Provider()]
     load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
     load_balancer.exclude_provider(providers[1])
@@ -83,7 +84,7 @@ def test_exclude_provider():
 
 
 @pytest.mark.asyncio
-async def test_heartbeat():
+async def test_load_balancer_heartbeat():
     provider = Provider()
     provider.check = mock.AsyncMock(return_value=False)
     load_balancer = LoadBalancer([provider], provider_selector=mock.Mock())
@@ -97,3 +98,21 @@ async def test_heartbeat():
     assert load_balancer.active_providers == []
     await load_balancer.check_heartbeats()
     assert load_balancer.active_providers == [provider]
+
+
+@pytest.mark.asyncio
+async def test_load_balancer_capacity_limiting__negative():
+    class SlowProvider(Provider):
+        async def get(self) -> str:
+            await asyncio.sleep(0.1)
+            return await super().get()
+
+    load_balancer = LoadBalancer(
+        [SlowProvider()], provider_selector=provider_selectors.RoundRobinSelector
+    )
+    _ = asyncio.create_task(load_balancer.get())
+    t2 = asyncio.create_task(load_balancer.get())
+    with pytest.raises(exceptions.CapacityExceeded):
+        await t2
+    await asyncio.sleep(0.2)
+    await load_balancer.get()
