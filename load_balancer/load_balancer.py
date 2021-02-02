@@ -1,4 +1,5 @@
-from typing import List, Sequence, Type, Set
+from collections import defaultdict, Counter
+from typing import List, Sequence, Type, Set, Dict
 
 from load_balancer.provider import Provider
 from load_balancer.provider_selectors import ProviderSelector
@@ -11,7 +12,8 @@ class LoadBalancer:
         self, providers: Sequence[Provider], provider_selector: Type[ProviderSelector]
     ):
         self._providers: List[Provider] = []
-        self._excluded_providers:  Set[Provider] = set()
+        self._excluded_providers: Set[Provider] = set()
+        self._reinclusion_candidate_counts: Counter[Dict] = Counter()
         self.providers = providers
         self._provider_selector = provider_selector()
 
@@ -50,3 +52,17 @@ class LoadBalancer:
         return await self._provider_selector.select_provider(
             self.active_providers
         ).get()
+
+    async def check_heartbeats(self):
+        for provider in self.providers:
+            healthcheck_result = await provider.check()
+            if healthcheck_result:
+                if provider in self._excluded_providers:
+                    self._reinclusion_candidate_counts[provider] += 1
+            else:
+                self.exclude_provider(provider)
+                self._reinclusion_candidate_counts[provider] = 0
+        for reinclusion_candidate, count in self._reinclusion_candidate_counts.items():
+            if count >= 2:
+                self._reinclusion_candidate_counts[reinclusion_candidate] = 0
+                self.include_provider(reinclusion_candidate)

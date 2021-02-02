@@ -80,3 +80,20 @@ def test_exclude_provider():
     load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
     load_balancer.exclude_provider(providers[1])
     assert load_balancer.active_providers == providers[:1]
+
+
+@pytest.mark.asyncio
+async def test_heartbeat():
+    provider = Provider()
+    provider.check = mock.AsyncMock(return_value=False)
+    load_balancer = LoadBalancer([provider], provider_selector=mock.Mock())
+    assert load_balancer.active_providers == [provider]
+    await load_balancer.check_heartbeats()
+    assert load_balancer.active_providers == []
+
+    #  Make provider healthy again
+    provider.check = mock.AsyncMock(return_value=True)
+    await load_balancer.check_heartbeats()
+    assert load_balancer.active_providers == []
+    await load_balancer.check_heartbeats()
+    assert load_balancer.active_providers == [provider]

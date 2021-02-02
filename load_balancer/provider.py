@@ -7,3 +7,9 @@ class Provider:
 
     async def get(self) -> str:
         return self._uid
+
+    async def check(self) -> bool:
+        return True
+
+    def __hash__(self):
+        return hash(self._uid)
