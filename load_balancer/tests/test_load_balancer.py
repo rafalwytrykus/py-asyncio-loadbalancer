@@ -65,3 +65,18 @@ async def test_load_balancer_selectors(_, provider, expected_uids):
     load_balancer = LoadBalancer(providers, provider_selector=provider)
     for expected_uid in expected_uids:
         assert await load_balancer.get() == expected_uid
+
+
+def test_include_provider():
+    providers = [Provider(), Provider()]
+    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
+    new_provider = Provider()
+    load_balancer.include_provider(new_provider)
+    assert load_balancer.active_providers == providers + [new_provider]
+
+
+def test_exclude_provider():
+    providers = [Provider(), Provider()]
+    load_balancer = LoadBalancer(providers, provider_selector=mock.Mock())
+    load_balancer.exclude_provider(providers[1])
+    assert load_balancer.active_providers == providers[:1]
